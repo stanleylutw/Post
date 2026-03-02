@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>郵局八格標籤離線工具 v3.4</title>
+  <style>
+    :root{
+      --bg:#0b1220; --text:#eaf0ff; --muted:#a9b6d6;
+      --primary:#4f8cff; --primary2:#2d6cff; --ok:#39d98a; --bad:#ff6b6b;
+      --shadow: 0 18px 60px rgba(0,0,0,.35); --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(79,140,255,.25), transparent 55%),
+                  radial-gradient(1200px 700px at 80% 0%, rgba(57,217,138,.16), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1040px;margin:26px auto;padding:0 16px 34px;}
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:14px;
+      padding:18px 18px;margin-bottom:14px;
+      border:1px solid rgba(255,255,255,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .brand{display:flex;gap:12px;align-items:center;min-width:0}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background: linear-gradient(135deg, rgba(79,140,255,.95), rgba(57,217,138,.85));
+      box-shadow: 0 12px 30px rgba(79,140,255,.25);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:900;color:#071026;
+    }
+    .brand h1{margin:0;font-size:18px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .brand .sub{margin:2px 0 0;color:var(--muted);font-size:12px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+    .chip{
+      background:rgba(19,36,74,.9);
+      border:1px solid rgba(255,255,255,.08);
+      padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted);
+    }
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:16px;
+    }
+    .card h2{margin:0 0 10px;font-size:14px;color:#dce7ff;letter-spacing:.2px}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 8px}
+    .filebox{
+      border:1px dashed rgba(255,255,255,.18);
+      background: rgba(13,23,48,.55);
+      border-radius: 14px;
+      padding:12px;
+    }
+    input[type=file]{width:100%;color:var(--muted)}
+    .meta{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .stat{
+      background: rgba(19,36,74,.6);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding:10px 12px;
+    }
+    .stat .k{font-size:11px;color:var(--muted)}
+    .stat .v{margin-top:2px;font-size:15px;font-weight:800;color:#f0f6ff}
+    .stat .v small{font-weight:700;color:var(--muted)}
+    .hint{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.55}
+    .actions{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+    button{
+      appearance:none;border:0;border-radius:16px;
+      padding:12px 14px;cursor:pointer;
+      font-weight:900;letter-spacing:.2px;
+    }
+    .btn-primary{
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      color:#06102a;
+      flex: 1;
+      min-width: 240px;
+      box-shadow: 0 14px 34px rgba(79,140,255,.25);
+    }
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+    .btn-ghost{
+      background: rgba(19,36,74,.6);
+      color:#dce7ff;
+      border:1px solid rgba(255,255,255,.10);
+      min-width: 180px;
+    }
+    .status{
+      margin-top:14px;padding:12px 14px;border-radius: 16px;
+      background: rgba(13,23,48,.55);
+      border:1px solid rgba(255,255,255,.08);
+      color:#dfe8ff;
+      white-space:pre-wrap;
+      font-size:12.5px;
+      line-height:1.6;
+    }
+    .status.ok{border-color:rgba(57,217,138,.35); background: rgba(57,217,138,.08);}
+    .status.bad{border-color:rgba(255,107,107,.4); background: rgba(255,107,107,.08);}
+    .footer{margin-top:14px;color:rgba(169,182,214,.85);font-size:12px;text-align:center;}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+         font-size:11px;padding:2px 6px;border-radius:8px;
+         background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#dce7ff;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">JG</div>
+        <div style="min-width:0">
+          <h1>郵局八格標籤離線工具 <span class="mono">v3.4</span></h1>
+          <div class="sub">吉光片羽股份有限公司｜修正：匯出檔名加入「時間+亂數」，避免同名鎖定；並啟用 sharedStrings/styles 寫出</div>
+        </div>
+      </div>
+      <div class="chips">
+        <div class="chip">離線：<span class="mono">exceljs.min.js</span></div>
+        <div class="chip">每頁 8 格</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>① 載入收件人 Excel</h2>
+        <div class="filebox">
+          <label>選擇含「收件人」分頁的 Excel</label>
+          <input id="recipientsFile" type="file" accept=".xlsx,.xls" />
+          <div class="hint">載入後會顯示收件者總數、預計頁數。</div>
+        </div>
+
+        <div class="meta">
+          <div class="stat"><div class="k">收件者總數</div><div class="v" id="rCount">—</div></div>
+          <div class="stat"><div class="k">預計輸出頁數</div><div class="v" id="rPages">—</div></div>
+        </div>
+        <div class="hint" id="rFileName"></div>
+      </div>
+
+      <div class="card">
+        <h2>② 載入模板（郵局標籤原檔）</h2>
+        <div class="filebox">
+          <label>選擇「郵局標籤.xlsx」</label>
+          <input id="templateFile" type="file" accept=".xlsx,.xls" />
+          <div class="hint">會自動找出 8 個「收件人」儲存格作為填入位置。</div>
+        </div>
+
+        <div class="meta">
+          <div class="stat"><div class="k">偵測到的工作表</div><div class="v" id="tSheet">—</div></div>
+          <div class="stat"><div class="k">偵測到的收件人欄位</div><div class="v" id="tSlots">—</div></div>
+        </div>
+        <div class="hint" id="tFileName"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>③ 匯出 .xlsx（可列印）</h2>
+      <div class="actions">
+        <button id="runBtn" class="btn-primary" disabled>匯出 .xlsx</button>
+        <button id="checkBtn" class="btn-ghost" type="button">檢查環境</button>
+      </div>
+      <div id="status" class="status">請先放入 <span class="kbd">exceljs.min.js</span>（與 HTML 同資料夾），再依序載入兩個 Excel。</div>
+      <div class="hint">若仍出現「需要修復」：代表模板內含文字方塊/圖形/圖片等物件，ExcelJS 無法 100% 原樣保留。解法：用 Excel 另存一份「只用儲存格文字+框線」的模板再試。</div>
+    </div>
+
+    <div class="footer">© 吉光片羽股份有限公司｜Offline Label Tool</div>
+  </div>
+
+  <script src="./exceljs.min.js"></script>
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    const statusEl = $("status");
+    const runBtn = $("runBtn");
+    const checkBtn = $("checkBtn");
+
+    const recipientsFileEl = $("recipientsFile");
+    const templateFileEl = $("templateFile");
+
+    const rCountEl = $("rCount");
+    const rPagesEl = $("rPages");
+    const rFileNameEl = $("rFileName");
+
+    const tSheetEl = $("tSheet");
+    const tSlotsEl = $("tSlots");
+    const tFileNameEl = $("tFileName");
+
+    const PER_PAGE = 8;
+
+    let gRecipients = [];
+    let gTemplate = { fileBuf: null, sheetName: "", slots: [], templateSheetName: "" };
+
+    function setStatus(msg, type="") {
+      statusEl.className = "status" + (type ? " " + type : "");
+      statusEl.textContent = msg;
+    }
+    function isExcelJSReady() { return (typeof ExcelJS !== "undefined") && ExcelJS && ExcelJS.Workbook; }
+
+    function enableIfReady() {
+      const ok = isExcelJSReady() && gRecipients.length > 0 && gTemplate.fileBuf && gTemplate.slots.length > 0;
+      runBtn.disabled = !ok;
+
+      if (!isExcelJSReady()) { setStatus("未偵測到 exceljs.min.js。\n請將 exceljs.min.js 與本 HTML 放在同一資料夾（檔名需完全一致），再重新整理頁面。", "bad"); return; }
+      if (!recipientsFileEl.files.length) { setStatus("請先載入收件人 Excel。"); return; }
+      if (!templateFileEl.files.length) { setStatus("請再載入模板（郵局標籤原檔）。"); return; }
+      if (!gRecipients.length) { setStatus("收件人檔已載入，但未解析到有效資料。", "bad"); return; }
+      if (!gTemplate.slots.length) { setStatus("模板已載入，但找不到 8 個「收件人」儲存格。", "bad"); return; }
+      setStatus("準備完成：可直接按「匯出 .xlsx」。", "ok");
+    }
+
+    async function readArrayBuffer(file) { return await file.arrayBuffer(); }
+
+    function normalizeString(v) {
+      if (v === null || v === undefined) return "";
+      if (typeof v === "string") return v.trim();
+      if (typeof v === "number") return String(v);
+      if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+      if (typeof v === "object") {
+        if (v.text) return String(v.text).trim();
+        if (v.richText && Array.isArray(v.richText)) return v.richText.map(x => x.text || "").join("").trim();
+        if (v.formula && v.result !== undefined) return normalizeString(v.result);
+      }
+      return String(v).trim();
+    }
+
+    function findRecipientsSheet(wb) {
+      let ws = wb.getWorksheet("收件人");
+      if (ws) return ws;
+      ws = wb.worksheets.find(s => (s.name || "").includes("收件"));
+      return ws || null;
+    }
+
+    function extractRecipientsFromWorksheet(ws) {
+      const out = [];
+      ws.eachRow({ includeEmpty:false }, (row) => {
+        const vals = [];
+        row.eachCell({ includeEmpty:false }, (cell) => {
+          const s = normalizeString(cell.value);
+          if (s) vals.push(s);
+        });
+        if (!vals.length) return;
+        if (vals.length === 1) { out.push(vals[0]); return; }
+
+        let zip="", addr="", name="", rest=[];
+        for (const v of vals) if (!zip && /^[0-9]{3,6}$/.test(v.replace(/\s+/g,""))) zip = v.replace(/\s+/g,"");
+        for (const v of vals) {
+          if (!name) {
+            const hasDigits = /[0-9]/.test(v);
+            if (!hasDigits && v.length >= 2 && v.length <= 20) {
+              const looksAddr = /(路|街|巷|弄|號|樓|段|村|里|鄰|區|市|縣|鎮|鄉|村)/.test(v);
+              if (!looksAddr) name = v;
+            }
+          }
+        }
+        let bestAddr="";
+        for (const v of vals) {
+          if (/(路|街|巷|弄|號|樓|段|村|里|鄰|區|市|縣|鎮|鄉)/.test(v)) if (v.length > bestAddr.length) bestAddr = v;
+        }
+        addr = bestAddr;
+
+        for (const v of vals) {
+          if (v === zip || v === addr || v === name) continue;
+          if (v) rest.push(v);
+        }
+
+        let line1 = (zip ? zip + " " : "") + (addr || "");
+        line1 = line1.trim();
+
+        const lines = [];
+        if (line1) lines.push(line1);
+        if (name) lines.push(name);
+        for (const r of rest) lines.push(r);
+
+        out.push(lines.length ? lines.join("\n") : vals.join("\n"));
+      });
+
+      if (out.length) {
+        const h = out[0];
+        if (/姓名|地址|郵遞區號|收件人/.test(h) && h.length < 50) out.shift();
+      }
+      return out;
+    }
+
+    function findLabelTemplateSheet(wb) {
+      let best=null, bestCount=-1;
+      for (const ws of wb.worksheets) {
+        let cnt=0;
+        ws.eachRow({ includeEmpty:false }, (row) => {
+          row.eachCell({ includeEmpty:false }, (cell) => {
+            const s = normalizeString(cell.value);
+            if (s && s.includes("收件人")) cnt++;
+          });
+        });
+        if (cnt > bestCount) { bestCount = cnt; best = ws; }
+      }
+      return (bestCount > 0 ? best : (wb.worksheets[0] || null));
+    }
+
+    function findRecipientSlotsByLabelCell(ws) {
+      const slots=[];
+      ws.eachRow({ includeEmpty:false }, (row, r) => {
+        row.eachCell({ includeEmpty:false }, (cell, c) => {
+          const s = normalizeString(cell.value);
+          if (s && s === "收件人") slots.push({ row:r, col:c });
+        });
+      });
+      const keyset = new Set(), dedup=[];
+      for (const it of slots) {
+        const k = it.row + ":" + it.col;
+        if (!keyset.has(k)) { keyset.add(k); dedup.push(it); }
+      }
+      dedup.sort((a,b)=> (a.row-b.row) || (a.col-b.col));
+      return dedup.slice(0, 8);
+    }
+
+    function applyRecipientsToSheet(ws, slots, recipientsForPage) {
+      for (let i=0;i<slots.length;i++) {
+        const t = slots[i];
+        const cell = ws.getCell(t.row, t.col);
+        cell.value = recipientsForPage[i] || "";
+        const st = cell.style || {};
+        const align = Object.assign({}, st.alignment || {});
+        align.wrapText = true;
+        cell.alignment = align;
+      }
+    }
+
+    function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+    function safeSheetName(base, idx) {
+      let name = `${base}${idx}`;
+      name = name.replace(/[\\/*?:[\]]/g, " ");
+      if (name.length > 31) name = name.slice(0, 31);
+      return name;
+    }
+    function cloneSheetFromModel(workbook, templateModel, newName) {
+      const ws = workbook.addWorksheet(newName);
+      const model = deepCopy(templateModel);
+      model.name = newName;
+      ws.model = model;
+      return ws;
+    }
+
+    function fileStamp() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      const ms = String(d.getMilliseconds()).padStart(3,'0');
+      const rand = Math.random().toString(16).slice(2,6);
+      return `${y}${m}${dd}_${hh}${mm}${ss}_${ms}_${rand}`;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    }
+
+    async function loadRecipientsFile(file) {
+      setStatus("正在載入收件人檔…");
+      const buf = await readArrayBuffer(file);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+
+      const ws = findRecipientsSheet(wb);
+      if (!ws) throw new Error("收件人檔找不到「收件人」分頁（或名稱包含「收件」）。");
+
+      const recs = extractRecipientsFromWorksheet(ws);
+      if (!recs.length) throw new Error("收件人分頁沒有讀到有效資料。");
+
+      gRecipients = recs;
+      const pages = Math.ceil(gRecipients.length / PER_PAGE);
+
+      rCountEl.textContent = String(gRecipients.length);
+      rPagesEl.innerHTML = `${pages} <small>頁</small>`;
+      rFileNameEl.textContent = `檔案：${file.name}（分頁：${ws.name}）`;
+    }
+
+    async function loadTemplateFile(file) {
+      setStatus("正在載入模板檔…");
+      const buf = await readArrayBuffer(file);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+
+      const ws = findLabelTemplateSheet(wb);
+      if (!ws) throw new Error("模板中找不到任何工作表。");
+
+      const slots = findRecipientSlotsByLabelCell(ws);
+      if (!slots.length) throw new Error("模板工作表中找不到獨立文字「收件人」的儲存格。");
+
+      gTemplate.fileBuf = buf;
+      gTemplate.sheetName = ws.name;
+      gTemplate.slots = slots;
+      gTemplate.templateSheetName = ws.name;
+
+      tSheetEl.textContent = ws.name;
+      tSlotsEl.innerHTML = `${slots.length} <small>格</small>`;
+      tFileNameEl.textContent = `檔案：${file.name}`;
+    }
+
+    recipientsFileEl.addEventListener("change", async () => {
+      try {
+        if (!isExcelJSReady()) { enableIfReady(); return; }
+        const f = recipientsFileEl.files[0];
+        if (!f) return;
+        await loadRecipientsFile(f);
+        setStatus("收件人載入完成。請載入模板。", "ok");
+      } catch (e) {
+        gRecipients = [];
+        rCountEl.textContent = "—"; rPagesEl.textContent = "—"; rFileNameEl.textContent = "";
+        setStatus("收件人載入失敗：\n" + (e.message || e), "bad");
+      } finally { enableIfReady(); }
+    });
+
+    templateFileEl.addEventListener("change", async () => {
+      try {
+        if (!isExcelJSReady()) { enableIfReady(); return; }
+        const f = templateFileEl.files[0];
+        if (!f) return;
+        await loadTemplateFile(f);
+        setStatus("模板載入完成。可匯出。", "ok");
+      } catch (e) {
+        gTemplate = { fileBuf:null, sheetName:"", slots:[], templateSheetName:"" };
+        tSheetEl.textContent = "—"; tSlotsEl.textContent = "—"; tFileNameEl.textContent = "";
+        setStatus("模板載入失敗：\n" + (e.message || e), "bad");
+      } finally { enableIfReady(); }
+    });
+
+    checkBtn.addEventListener("click", () => {
+      if (!isExcelJSReady()) {
+        setStatus("未偵測到 exceljs.min.js。\n請確認：\n1) exceljs.min.js 與 HTML 同資料夾\n2) 檔名完全是「exceljs.min.js」\n3) 重新整理頁面（" + (navigator.platform.includes("Mac") ? "Cmd" : "Ctrl") + "+Shift+R）", "bad");
+        return;
+      }
+      const msg =
+        "環境正常（已載入 ExcelJS）。\n" +
+        "收件人：" + (gRecipients.length ? gRecipients.length + " 筆" : "尚未載入") + "\n" +
+        "模板：" + (gTemplate.slots.length ? (gTemplate.sheetName + "，" + gTemplate.slots.length + " 格") : "尚未載入");
+      setStatus(msg, "ok");
+      enableIfReady();
+    });
+
+    runBtn.addEventListener("click", async () => {
+      try {
+        if (!isExcelJSReady()) { enableIfReady(); return; }
+        if (!gRecipients.length) throw new Error("尚未載入收件人。");
+        if (!gTemplate.fileBuf || !gTemplate.slots.length) throw new Error("尚未載入模板或模板欄位不足。");
+
+        const totalPages = Math.ceil(gRecipients.length / PER_PAGE);
+        setStatus(`開始匯出…（${gRecipients.length} 筆／${totalPages} 頁）`);
+
+        const outWb = new ExcelJS.Workbook();
+        await outWb.xlsx.load(gTemplate.fileBuf);
+
+        const tplWs = outWb.getWorksheet(gTemplate.templateSheetName);
+        if (!tplWs) throw new Error("輸出時找不到模板工作表（名稱可能被變更）。");
+
+        const slots = findRecipientSlotsByLabelCell(tplWs);
+        if (!slots.length) throw new Error("輸出時找不到「收件人」欄位。");
+
+        applyRecipientsToSheet(tplWs, slots, gRecipients.slice(0, PER_PAGE));
+
+        const templateModel = deepCopy(tplWs.model);
+        for (let p = 2; p <= totalPages; p++) {
+          const pageName = safeSheetName("Page", p);
+          const ws = cloneSheetFromModel(outWb, templateModel, pageName);
+          const start = (p-1) * PER_PAGE;
+          const pageRecipients = gRecipients.slice(start, start + PER_PAGE);
+          applyRecipientsToSheet(ws, slots, pageRecipients);
+        }
+
+        const outBuf = await outWb.xlsx.writeBuffer({ useSharedStrings: true, useStyles: true });
+        const blob = new Blob([outBuf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+        // Unique filename to avoid Windows/Excel file-in-use lock dialog
+        const fname = `郵局標籤_收件人已帶入_${fileStamp()}.xlsx`;
+        downloadBlob(blob, fname);
+
+        setStatus(`✅ 已匯出：${fname}\n若你剛剛有開過同名檔，這版會自動改名避免被鎖定。`, "ok");
+      } catch (e) {
+        setStatus("匯出失敗：\n" + (e.message || e), "bad");
+      }
+    });
+
+    window.addEventListener("load", () => {
+      rCountEl.textContent = "—";
+      rPagesEl.textContent = "—";
+      tSheetEl.textContent = "—";
+      tSlotsEl.textContent = "—";
+      enableIfReady();
+    });
+  </script>
+</body>
+</html>
